@@ -1,5 +1,5 @@
 use bevy::asset::{AssetLoader, BoxedFuture, LoadContext, LoadedAsset};
-use bevy::prelude::{Image, Mesh};
+use bevy::prelude::{Image, Mesh, Quat, Transform};
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use bevy::render::mesh::Indices;
@@ -8,6 +8,7 @@ use bevy::render::texture::ImageType;
 
 use std::time::Instant;
 use std::cmp::min;
+use bevy::math::Vec3;
 
 pub mod loader;
 
@@ -71,6 +72,37 @@ impl<H: HeightSource> HeightMap<H> {
     }
 }
 
+fn build_normal<T: HeightSource>(x: usize, y: usize, height_map: &mut HeightMap<T>) -> [f32; 3] {
+    let center_height = height_map.sample(x, y);
+
+    let delta_left = if x == 0 { 0.0 } else {
+        center_height - height_map.sample(x - 1, y)
+    };
+
+    let delta_right = if x == height_map.source_size { 0.0 } else {
+        center_height - height_map.sample(x + 1, y)
+    };
+
+    let delta_top = if y == 0 { 0.0 } else {
+        center_height - height_map.sample(x, y - 1)
+    };
+
+    let delta_bottom = if y == height_map.source_size { 0.0 } else {
+        center_height - height_map.sample(x, y + 1)
+    };
+
+    let x_angel = ((delta_left - delta_right) / 2.0) * 45.0;
+    let y_angel = ((delta_top - delta_bottom) / 2.0) * 45.0;
+
+    let mut transform = Transform::identity();
+    transform.rotate(Quat::from_rotation_x(x_angel));
+    transform.rotate(Quat::from_rotation_y(y_angel));
+
+    let normal = transform * Vec3::new(0.0, 1.0, 0.0);
+
+    normal.to_array()
+}
+
 fn create_mesh<T: HeightSource>(mut hm: HeightMap<T>) -> Mesh {
     let start = Instant::now();
 
@@ -94,7 +126,7 @@ fn create_mesh<T: HeightSource>(mut hm: HeightMap<T>) -> Mesh {
             let height = hm.sample(x, y);
             positions.push([lx, height, ly]);
             uvs.push([lx, ly]);
-            normals.push([0.0, 1.0, 0.0]);
+            normals.push(build_normal(x, y, &mut hm));
         }
     }
 
