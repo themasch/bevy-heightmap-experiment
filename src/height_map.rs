@@ -1,8 +1,6 @@
-use bevy::asset::{AssetLoader, BoxedFuture, LoadContext, LoadedAsset};
 use bevy::prelude::{Image, Mesh, Quat, Transform};
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
-use bevy::render::texture::ImageType;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 
@@ -53,8 +51,8 @@ impl HeightSource for ImageHeightSource {
 }
 
 pub struct HeightMap<H>
-where
-    H: HeightSource,
+    where
+        H: HeightSource,
 {
     height_source: H,
     source_size: usize,
@@ -153,6 +151,8 @@ fn create_mesh<T: HeightSource>(mut hm: HeightMap<T>) -> Mesh {
             }
         }
     }
+
+    println!("{} triangles in total", positions.len());
 
     // ~150ms
     println!("terrain generation took {:?}", start.elapsed());

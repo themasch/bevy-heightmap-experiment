@@ -1,6 +1,5 @@
 use bevy::app::AppExit;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
-use bevy::input::keyboard::KeyboardInput;
 use bevy::pbr::wireframe::{Wireframe, WireframePlugin};
 use bevy::prelude::Entity;
 use bevy::{
@@ -49,18 +48,16 @@ fn setup_camera(mut commands: Commands) {
 }
 
 /// exit the .. gam... thing when Q or ESC is released
-fn exit(mut keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
+fn exit(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
     if keyboard_input.just_released(KeyCode::Q) || keyboard_input.just_released(KeyCode::Escape) {
         app_exit_events.send(AppExit);
     }
 }
 
-use bevy::ecs::query;
-
 fn toggle_wireframe(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
-    mut entities: Query<(Entity, With<ToggleWireframe>, Option<With<Wireframe>>)>,
+    entities: Query<(Entity, With<ToggleWireframe>, Option<With<Wireframe>>)>,
 ) {
     if keyboard_input.just_released(KeyCode::W) {
         for (entity, _, has_wf) in entities.iter() {
@@ -84,14 +81,14 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // cube
-    //let terrain_mesh: Handle<Mesh> = asset_server.load("Heightmap5_DISP.hm.png");
+    let terrain_mesh: Handle<Mesh> = asset_server.load("Heightmap5_DISP.hm.png");
     //let terrain_mesh: Handle<Mesh> = asset_server.load("Sc2wB.hm.jpg");
-    let terrain_mesh: Handle<Mesh> = asset_server.load("dereth-2015-07-27-height.hm.png");
+    //let terrain_mesh: Handle<Mesh> = asset_server.load("dereth-2015-07-27-height.hm.png");
     commands
         .spawn_bundle(PbrBundle {
             mesh: terrain_mesh,
             material: materials.add(StandardMaterial {
-                base_color: Color::rgb(0.8, 0.8, 0.8).into(),
+                base_color: Color::rgb(0.8, 0.8, 0.8),
                 metallic: 0.25,
                 ..Default::default()
             }),
