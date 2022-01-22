@@ -1,14 +1,14 @@
 use bevy::asset::{AssetLoader, BoxedFuture, LoadContext, LoadedAsset};
 use bevy::prelude::{Image, Mesh, Quat, Transform};
-use rand::prelude::ThreadRng;
-use rand::Rng;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::render::texture::ImageType;
+use rand::prelude::ThreadRng;
+use rand::Rng;
 
-use std::time::Instant;
-use std::cmp::min;
 use bevy::math::Vec3;
+use std::cmp::min;
+use std::time::Instant;
 
 pub mod loader;
 
@@ -22,7 +22,9 @@ pub struct ThreadLocalRngHeightSource {
 
 impl ThreadLocalRngHeightSource {
     fn new() -> Self {
-        Self { rng: rand::thread_rng() }
+        Self {
+            rng: rand::thread_rng(),
+        }
     }
 }
 
@@ -50,7 +52,10 @@ impl HeightSource for ImageHeightSource {
     }
 }
 
-pub struct HeightMap<H> where H: HeightSource {
+pub struct HeightMap<H>
+where
+    H: HeightSource,
+{
     height_source: H,
     source_size: usize,
     target_size: f32,
@@ -75,19 +80,27 @@ impl<H: HeightSource> HeightMap<H> {
 fn build_normal<T: HeightSource>(x: usize, y: usize, height_map: &mut HeightMap<T>) -> [f32; 3] {
     let center_height = height_map.sample(x, y);
 
-    let delta_left = if x == 0 { 0.0 } else {
+    let delta_left = if x == 0 {
+        0.0
+    } else {
         center_height - height_map.sample(x - 1, y)
     };
 
-    let delta_right = if x == height_map.source_size { 0.0 } else {
+    let delta_right = if x == height_map.source_size {
+        0.0
+    } else {
         center_height - height_map.sample(x + 1, y)
     };
 
-    let delta_top = if y == 0 { 0.0 } else {
+    let delta_top = if y == 0 {
+        0.0
+    } else {
         center_height - height_map.sample(x, y - 1)
     };
 
-    let delta_bottom = if y == height_map.source_size { 0.0 } else {
+    let delta_bottom = if y == height_map.source_size {
+        0.0
+    } else {
         center_height - height_map.sample(x, y + 1)
     };
 
@@ -161,7 +174,11 @@ fn mesh_from_image(height_map: Image) -> Mesh {
     let height = height_map.texture_descriptor.size.height;
     let height_source = ImageHeightSource { image: height_map };
 
-    let hm = HeightMap::create(height_source, min(width as usize, height as usize) - 10, 10.0);
+    let hm = HeightMap::create(
+        height_source,
+        min(width as usize, height as usize) - 10,
+        10.0,
+    );
 
     create_mesh(hm)
 }

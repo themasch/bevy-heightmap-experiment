@@ -1,11 +1,15 @@
+use crate::{height_map, Image};
 use bevy::asset::{AssetLoader, BoxedFuture, LoadContext, LoadedAsset};
 use bevy::render::texture::ImageType;
-use crate::{height_map, Image};
 
 pub struct HeightmapMeshLoader;
 
 impl AssetLoader for HeightmapMeshLoader {
-    fn load<'a>(&'a self, bytes: &'a [u8], load_context: &'a mut LoadContext) -> BoxedFuture<'a, anyhow::Result<(), anyhow::Error>> {
+    fn load<'a>(
+        &'a self,
+        bytes: &'a [u8],
+        load_context: &'a mut LoadContext,
+    ) -> BoxedFuture<'a, anyhow::Result<(), anyhow::Error>> {
         println!("loading height map");
         Box::pin(async move {
             // use the file extension for the image type
