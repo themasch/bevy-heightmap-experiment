@@ -1,5 +1,6 @@
-use crate::{height_map, Image};
+use crate::height_map;
 use bevy::asset::{AssetLoader, BoxedFuture, LoadContext, LoadedAsset};
+use bevy::prelude::Image;
 use bevy::render::texture::ImageType;
 
 pub struct HeightmapMeshLoader;
@@ -16,7 +17,6 @@ impl AssetLoader for HeightmapMeshLoader {
             let ext = load_context.path().extension().unwrap().to_str().unwrap();
 
             let dyn_img = Image::from_buffer(bytes, ImageType::Extension(ext)).unwrap();
-            //let dyn_img = dyn_img.convert(TextureFormat::R8Unorm).unwrap();
             let mesh = height_map::mesh_from_image(dyn_img);
             load_context.set_default_asset(LoadedAsset::new(mesh));
             Ok(())

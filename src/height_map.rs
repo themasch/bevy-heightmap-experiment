@@ -1,7 +1,6 @@
 use bevy::prelude::{Image, Mesh, Quat, Transform};
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
-use rand::prelude::ThreadRng;
 use rand::Rng;
 
 use bevy::math::Vec3;
@@ -11,42 +10,48 @@ use std::time::Instant;
 pub mod loader;
 
 pub trait HeightSource {
-    fn sample_height(&mut self, x: usize, y: usize) -> f32;
+    fn sample_height(&self, x: usize, y: usize) -> f32;
 }
 
-pub struct ThreadLocalRngHeightSource {
-    rng: ThreadRng,
-}
+pub struct ThreadLocalRngHeightSource;
 
 impl ThreadLocalRngHeightSource {
+    #[allow(dead_code)]
     fn new() -> Self {
-        Self {
-            rng: rand::thread_rng(),
-        }
+        Self
     }
 }
 
 impl HeightSource for ThreadLocalRngHeightSource {
-    fn sample_height(&mut self, _: usize, _: usize) -> f32 {
-        self.rng.gen_range(-2..2) as f32 / 100.0
+    fn sample_height(&self, _: usize, _: usize) -> f32 {
+        rand::thread_rng().gen_range(-2..2) as f32 / 100.0
     }
 }
 
 pub struct ImageHeightSource {
     image: Image,
+    height: usize,
+    bytes_per_pixel: usize,
+}
+
+impl ImageHeightSource {
+    pub fn from_grayscale(image: Image) -> ImageHeightSource {
+        let width = image.texture_descriptor.size.width as usize;
+        let height = image.texture_descriptor.size.height as usize;
+        Self {
+            height,
+            bytes_per_pixel: image.data.len() / (width * height),
+            image,
+        }
+    }
 }
 
 impl HeightSource for ImageHeightSource {
-    fn sample_height(&mut self, x: usize, y: usize) -> f32 {
-        let width = self.image.texture_descriptor.size.width as usize;
-        let height = self.image.texture_descriptor.size.height as usize;
-        let bytes_per_pixel = self.image.data.len() / (width * height);
-        let offset = (x + (y * height)) * bytes_per_pixel;
+    #[inline]
+    fn sample_height(&self, x: usize, y: usize) -> f32 {
+        let offset = (x + (y * self.height)) * self.bytes_per_pixel;
 
-        debug_assert!(x < width);
-        debug_assert!(y < height);
-
-        (self.image.data[offset] as f32 / 255.0) * 0.5
+        self.image.data[offset] as f32 / 512.0
     }
 }
 
@@ -68,14 +73,14 @@ impl<H: HeightSource> HeightMap<H> {
         }
     }
 
-    fn sample(&mut self, x: usize, y: usize) -> f32 {
+    fn sample(&self, x: usize, y: usize) -> f32 {
         debug_assert!(x <= self.source_size);
         debug_assert!(y <= self.source_size);
-        <H as HeightSource>::sample_height(&mut self.height_source, x, y)
+        <H as HeightSource>::sample_height(&self.height_source, x, y)
     }
 }
 
-fn build_normal<T: HeightSource>(x: usize, y: usize, height_map: &mut HeightMap<T>) -> [f32; 3] {
+fn build_normal<T: HeightSource>(x: usize, y: usize, height_map: &HeightMap<T>) -> [f32; 3] {
     let center_height = height_map.sample(x, y);
 
     let delta_left = if x == 0 {
@@ -102,6 +107,11 @@ fn build_normal<T: HeightSource>(x: usize, y: usize, height_map: &mut HeightMap<
         center_height - height_map.sample(x, y + 1)
     };
 
+    // quick path for flat terrain
+    if delta_bottom == 0.0 && delta_top == 0.0 && delta_left == 0.0 && delta_right == 0.0 {
+        return [0.0, 1.0, 0.0];
+    }
+
     let x_angel = ((delta_left - delta_right) / 2.0) * 45.0;
     let y_angel = ((delta_top - delta_bottom) / 2.0) * 45.0;
 
@@ -114,35 +124,36 @@ fn build_normal<T: HeightSource>(x: usize, y: usize, height_map: &mut HeightMap<
     normal.to_array()
 }
 
-fn create_mesh<T: HeightSource>(mut hm: HeightMap<T>) -> Mesh {
+fn create_mesh<T: HeightSource>(hm: HeightMap<T>) -> Mesh {
     let start = Instant::now();
-
-    let mut positions = Vec::new();
-    let mut uvs = Vec::new();
-    let mut normals = Vec::new();
 
     // we want {resolution} by {resolution} tiles
     let resolution = hm.source_size;
     // we want the terrain to occupy size * size units
     let size = hm.target_size;
 
+    let mut positions = vec![[0.0, 0.0, 0.0]; (resolution + 1) * (resolution + 1)];
+    let mut uvs = vec![[0.0, 0.0]; (resolution + 1) * (resolution + 1)];
+    let mut normals = vec![[0.0, 0.0, 0.0]; (resolution + 1) * (resolution + 1)];
+    let mut indices = Vec::with_capacity(resolution * resolution * 6);
+
     let res_scale = size as f32 / resolution as f32;
+    let half_res = resolution as f32 / 2.0;
 
     for x in 0..=resolution {
         for y in 0..=resolution {
-            let lx = (x as f32 - (resolution as f32 / 2.0)) * res_scale;
-            let ly = (y as f32 - (resolution as f32 / 2.0)) * res_scale;
+            let lx = (x as f32 - half_res) * res_scale;
+            let ly = (y as f32 - half_res) * res_scale;
 
             let height = hm.sample(x, y);
-            positions.push([lx, height, ly]);
-            uvs.push([lx, ly]);
-            normals.push(build_normal(x, y, &mut hm));
+            let offset = y + (x * (resolution + 1));
+            positions[offset] = [lx, height, ly];
+            uvs[offset] = [lx, ly];
+            normals[offset] = build_normal(x, y, &hm);
         }
     }
 
-    // 87ms
     println!("terrain generation took {:?}", start.elapsed());
-    let mut indices = Vec::new();
     let res_plus1 = resolution + 1;
     for py in 0..resolution {
         for px in 0..resolution {
@@ -154,7 +165,6 @@ fn create_mesh<T: HeightSource>(mut hm: HeightMap<T>) -> Mesh {
 
     println!("{} triangles in total", positions.len());
 
-    // ~150ms
     println!("terrain generation took {:?}", start.elapsed());
     let indices = Indices::U32(indices);
 
@@ -164,15 +174,13 @@ fn create_mesh<T: HeightSource>(mut hm: HeightMap<T>) -> Mesh {
     mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
 
-    println!("terrain generation took {:?}", start.elapsed());
-
     mesh
 }
 
-fn mesh_from_image(height_map: Image) -> Mesh {
+pub fn mesh_from_image(height_map: Image) -> Mesh {
     let width = height_map.texture_descriptor.size.width;
     let height = height_map.texture_descriptor.size.height;
-    let height_source = ImageHeightSource { image: height_map };
+    let height_source = ImageHeightSource::from_grayscale(height_map);
 
     let hm = HeightMap::create(
         height_source,
