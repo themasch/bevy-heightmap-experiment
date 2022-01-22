@@ -46,7 +46,7 @@ impl HeightSource for ImageHeightSource {
         debug_assert!(x < width);
         debug_assert!(y < height);
 
-        (self.image.data[offset] as f32 / 255.0) * 0.25
+        (self.image.data[offset] as f32 / 255.0) * 0.5
     }
 }
 
@@ -109,7 +109,6 @@ fn create_mesh<T: HeightSource>(mut hm: HeightMap<T>) -> Mesh {
     let mut positions = Vec::new();
     let mut uvs = Vec::new();
     let mut normals = Vec::new();
-    let mut indices = Vec::new();
 
     // we want {resolution} by {resolution} tiles
     let resolution = hm.source_size;
@@ -130,6 +129,9 @@ fn create_mesh<T: HeightSource>(mut hm: HeightMap<T>) -> Mesh {
         }
     }
 
+    // 87ms
+    println!("terrain generation took {:?}", start.elapsed());
+    let mut indices = Vec::new();
     let res_plus1 = resolution + 1;
     for py in 0..resolution {
         for px in 0..resolution {
@@ -139,6 +141,8 @@ fn create_mesh<T: HeightSource>(mut hm: HeightMap<T>) -> Mesh {
         }
     }
 
+    // ~150ms
+    println!("terrain generation took {:?}", start.elapsed());
     let indices = Indices::U32(indices);
 
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
@@ -157,7 +161,7 @@ fn mesh_from_image(height_map: Image) -> Mesh {
     let height = height_map.texture_descriptor.size.height;
     let height_source = ImageHeightSource { image: height_map };
 
-    let hm = HeightMap::create(height_source, min(width as usize, height as usize) - 10, 5.0);
+    let hm = HeightMap::create(height_source, min(width as usize, height as usize) - 10, 10.0);
 
     create_mesh(hm)
 }
