@@ -81,7 +81,8 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // cube
-    let terrain_mesh: Handle<Mesh> = asset_server.load("Heightmap5_DISP.hm.png");
+    let terrain_mesh: Handle<Mesh> = asset_server.load("linear_gradient.hm.png");
+    //let terrain_mesh: Handle<Mesh> = asset_server.load("Heightmap5_DISP.hm.png");
     //let terrain_mesh: Handle<Mesh> = asset_server.load("Sc2wB.hm.jpg");
     //let terrain_mesh: Handle<Mesh> = asset_server.load("dereth-2015-07-27-height.hm.png");
     commands

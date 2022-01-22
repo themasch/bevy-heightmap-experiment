@@ -1,6 +1,6 @@
-use bevy::prelude::{Image, Mesh, Quat, Transform};
+use bevy::prelude::{Color, Image, Mesh, Quat, Transform};
 use bevy::render::mesh::Indices;
-use bevy::render::render_resource::PrimitiveTopology;
+use bevy::render::render_resource::{PrimitiveTopology, TextureFormat};
 use rand::Rng;
 
 use bevy::math::Vec3;
@@ -31,16 +31,16 @@ impl HeightSource for ThreadLocalRngHeightSource {
 pub struct ImageHeightSource {
     image: Image,
     height: usize,
-    bytes_per_pixel: usize,
+    format: TextureFormat,
 }
 
 impl ImageHeightSource {
     pub fn from_grayscale(image: Image) -> ImageHeightSource {
-        let width = image.texture_descriptor.size.width as usize;
         let height = image.texture_descriptor.size.height as usize;
+        let format = image.texture_descriptor.format;
         Self {
             height,
-            bytes_per_pixel: image.data.len() / (width * height),
+            format,
             image,
         }
     }
@@ -49,9 +49,22 @@ impl ImageHeightSource {
 impl HeightSource for ImageHeightSource {
     #[inline]
     fn sample_height(&self, x: usize, y: usize) -> f32 {
-        let offset = (x + (y * self.height)) * self.bytes_per_pixel;
-
-        self.image.data[offset] as f32 / 512.0
+        match self.format {
+            TextureFormat::Rgba8UnormSrgb => {
+                let offset = (x + (y * self.height)) * 4;
+                let srgb = palette::Srgb::from_components((self.image.data[offset] as f64 / 255.0, self.image.data[offset + 1] as f64 / 255.0, self.image.data[offset + 2] as f64 / 255.0));
+                srgb.into_linear().into_components().0 as f32
+            }
+            TextureFormat::Rgba8Uint => {
+                let offset = (x + (y * self.height)) * 4;
+                self.image.data[offset] as f32 / 512.0
+            }
+            TextureFormat::Rgba16Uint => {
+                let offset = (x + (y * self.height)) * 8;
+                ((self.image.data[offset + 1] as usize) * 256 + self.image.data[offset] as usize) as f32 / 131072.0
+            }
+            _ => panic!("unsupported texture format: {:?}", self.format)
+        }
     }
 }
 
