@@ -1,20 +1,20 @@
-use bevy::app::AppExit;
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
-use bevy::pbr::wireframe::{Wireframe, WireframePlugin};
-use bevy::prelude::Entity;
 use bevy::{
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    pbr::wireframe::WireframePlugin,
     prelude::*,
     render::{options::WgpuOptions, render_resource::WgpuFeatures},
 };
 
-use smooth_bevy_cameras::controllers::orbit::{
-    OrbitCameraBundle, OrbitCameraController, OrbitCameraPlugin,
+use smooth_bevy_cameras::{
+    controllers::orbit::{OrbitCameraBundle, OrbitCameraController, OrbitCameraPlugin},
+    LookTransformPlugin,
 };
-use smooth_bevy_cameras::LookTransformPlugin;
 
 mod height_map;
+mod systems;
 
 use height_map::loader::HeightmapMeshLoader;
+use systems::{TerrainMarker, ToggleWireframe};
 
 fn main() {
     App::new()
@@ -33,8 +33,8 @@ fn main() {
         .add_asset_loader(HeightmapMeshLoader)
         .add_startup_system(setup)
         .add_startup_system(setup_camera)
-        .add_system(exit)
-        .add_system(toggle_wireframe)
+        .add_system(systems::exit_from_keypress)
+        .add_system(systems::toggle_wireframe)
         .run();
 }
 
@@ -47,47 +47,19 @@ fn setup_camera(mut commands: Commands) {
     ));
 }
 
-/// exit the .. gam... thing when Q or ESC is released
-fn exit(keyboard_input: Res<Input<KeyCode>>, mut app_exit_events: EventWriter<AppExit>) {
-    if keyboard_input.just_released(KeyCode::Q) || keyboard_input.just_released(KeyCode::Escape) {
-        app_exit_events.send(AppExit);
-    }
-}
-
-fn toggle_wireframe(
-    mut commands: Commands,
-    keyboard_input: Res<Input<KeyCode>>,
-    entities: Query<(Entity, With<ToggleWireframe>, Option<With<Wireframe>>)>,
-) {
-    if keyboard_input.just_released(KeyCode::W) {
-        for (entity, _, has_wf) in entities.iter() {
-            if has_wf.is_some() {
-                commands.entity(entity).remove::<Wireframe>();
-            } else {
-                commands.entity(entity).insert(Wireframe);
-            }
-        }
-    }
-}
-
-#[derive(Component, Debug, Clone, Default, Reflect)]
-#[reflect(Component)]
-struct ToggleWireframe;
-
 /// set up a simple 3D scene
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // cube
     let terrain_mesh: Handle<Mesh> = asset_server.load("linear_gradient.hm.png");
     //let terrain_mesh: Handle<Mesh> = asset_server.load("Heightmap5_DISP.hm.png");
     //let terrain_mesh: Handle<Mesh> = asset_server.load("Sc2wB.hm.jpg");
     //let terrain_mesh: Handle<Mesh> = asset_server.load("dereth-2015-07-27-height.hm.png");
     commands
         .spawn_bundle(PbrBundle {
-            mesh: terrain_mesh,
+            mesh: terrain_mesh.clone(),
             material: materials.add(StandardMaterial {
                 base_color: Color::rgb(0.8, 0.8, 0.8),
                 metallic: 0.25,
@@ -96,6 +68,7 @@ fn setup(
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..Default::default()
         })
+        .insert(TerrainMarker(terrain_mesh))
         .insert(ToggleWireframe);
 
     // light
