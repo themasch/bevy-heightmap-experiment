@@ -4,6 +4,7 @@ use bevy::{
     prelude::*,
     render::{options::WgpuOptions, render_resource::WgpuFeatures},
 };
+use bevy::asset::AssetServerSettings;
 
 use smooth_bevy_cameras::{
     controllers::orbit::{OrbitCameraBundle, OrbitCameraController, OrbitCameraPlugin},
@@ -17,12 +18,16 @@ use height_map::loader::HeightmapMeshLoader;
 use systems::{TerrainMarker, ToggleWireframe};
 
 fn main() {
+    let assets = std::env::current_dir().unwrap().join("assets").into_os_string().into_string().unwrap();
     App::new()
         .insert_resource(Msaa { samples: 4 })
         .insert_resource(WgpuOptions {
             features: WgpuFeatures::POLYGON_MODE_LINE,
             ..Default::default()
         }) // Adds frame time diagnostics
+        .insert_resource(AssetServerSettings {
+            asset_folder: assets
+        })
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // Adds a system that prints diagnostics to the console
         .add_plugin(LogDiagnosticsPlugin::default())
@@ -56,7 +61,7 @@ fn setup(
     let terrain_mesh: Handle<Mesh> = asset_server.load("linear_gradient.hm.png");
     //let terrain_mesh: Handle<Mesh> = asset_server.load("Heightmap5_DISP.hm.png");
     //let terrain_mesh: Handle<Mesh> = asset_server.load("Sc2wB.hm.jpg");
-    //let terrain_mesh: Handle<Mesh> = asset_server.load("dereth-2015-07-27-height.hm.png");
+    // let terrain_mesh: Handle<Mesh> = asset_server.load("dereth-2015-07-27-height.hm.png");
     commands
         .spawn_bundle(PbrBundle {
             mesh: terrain_mesh.clone(),
