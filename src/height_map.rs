@@ -202,7 +202,7 @@ fn create_mesh<T: HeightSource>(hm: HeightMap<T>) -> Mesh {
     println!("terrain generation took {:?}", start.elapsed());
     let indices = Indices::U32(indices);
 
-    let max_triangles = ((resolution - 1) * (resolution - 1) * 2);
+    let max_triangles = (resolution - 1) * (resolution - 1) * 2;
     println!(
         "{} triangles in total (max {}, {}% saved)",
         indices.len() / 3,

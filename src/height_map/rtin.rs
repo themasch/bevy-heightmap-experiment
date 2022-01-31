@@ -1,17 +1,16 @@
-use bevy::math::EulerRot;
+/// TODO: understand this code
+/// this is mostly copied/transliterated from [a javascript example by Vladimir Agafonkin][0]
+///
+/// I have read [the paper][1], but still do not quite understand whats going on. But it just works.
+/// And it works great! While the initial performance of is not as good as the "initial stupid"
+/// implementation of "just render all triangle lel", it reduces the number of drawn triangles
+/// by a lot, even without LOD based on the camera position
+///
+/// [0]: https://observablehq.com/@mourner/martin-real-time-rtin-terrain-mesh
+/// [1]: https://www.cs.ubc.ca/~will/papers/rtin.pdf
+
 use crate::height_map::{HeightMap, HeightSource};
 
-
-//! TODO: understand this code
-//! this is mostly copied/transliterated from [a javascript example by Vladimir Agafonkin][0]
-//!
-//! I have read [the paper][1], but still do not quite understand whats going on. But it just works.
-//! And it works great! While the initial performance of is not as good as the "initial stupid"
-//! implementation of "just render all triangle lel", it reduces the number of drawn triangles
-//! by a lot, even without LOD based on the camera position
-//!
-//! [0]: https://observablehq.com/@mourner/martin-real-time-rtin-terrain-mesh
-//! [1]: https://www.cs.ubc.ca/~will/papers/rtin.pdf
 
 #[derive(Debug, Clone, Copy)]
 struct UXY {
@@ -136,7 +135,7 @@ impl<T: HeightSource> RtinMeshBuilder<T> {
     }
 
     pub fn get_indices(&self, max_error: f32) -> Vec<u32> {
-        let mut builder = IndexBuilder::create(&self.error_map, self.height_map.source_size, max_error);
+        let builder = IndexBuilder::create(&self.error_map, self.height_map.source_size, max_error);
 
         builder.process_root()
     }
