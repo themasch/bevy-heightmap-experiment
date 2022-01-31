@@ -5,17 +5,17 @@ use bevy::{
     render::{options::WgpuOptions, render_resource::WgpuFeatures},
 };
 use bevy::asset::AssetServerSettings;
-
+use bevy::diagnostic::EntityCountDiagnosticsPlugin;
 use smooth_bevy_cameras::{
     controllers::orbit::{OrbitCameraBundle, OrbitCameraController, OrbitCameraPlugin},
     LookTransformPlugin,
 };
 
-mod height_map;
-mod systems;
-
-use height_map::loader::HeightmapMeshLoader;
+use venture::height_map::loader::HeightmapMeshLoader;
 use systems::{TerrainMarker, ToggleWireframe};
+use venture::debug_ui::DebugUiPlugin;
+
+mod systems;
 
 fn main() {
     let assets = std::env::current_dir().unwrap().join("assets").into_os_string().into_string().unwrap();
@@ -29,12 +29,14 @@ fn main() {
             asset_folder: assets
         })
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(EntityCountDiagnosticsPlugin::default())
         // Adds a system that prints diagnostics to the console
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugins(DefaultPlugins)
         .add_plugin(LookTransformPlugin)
         .add_plugin(OrbitCameraPlugin::default())
         .add_plugin(WireframePlugin)
+        .add_plugin(DebugUiPlugin)
         .add_asset_loader(HeightmapMeshLoader)
         .add_startup_system(setup)
         .add_startup_system(setup_camera)
