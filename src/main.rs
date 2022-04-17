@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use bevy::asset::AssetServerSettings;
 use bevy::diagnostic::EntityCountDiagnosticsPlugin;
 use bevy::{
@@ -16,6 +17,9 @@ use venture::debug_ui::DebugUiPlugin;
 use venture::height_map::loader::HeightmapMeshLoader;
 
 mod systems;
+
+#[derive(Debug, Clone, Default)]
+struct LoadTerrainMapPath(Option<PathBuf>);
 
 fn main() {
     let assets = std::env::current_dir()
@@ -45,8 +49,11 @@ fn main() {
         .add_plugin(WireframePlugin)
         .add_plugin(DebugUiPlugin)
         .init_asset_loader::<HeightmapMeshLoader>()
+        .insert_resource(LoadTerrainMapPath::default())
         .add_startup_system(setup)
         .add_startup_system(setup_camera)
+        .add_system(file_drag_and_drop_system)
+        .add_system(load_new_terrain)
         .add_system(systems::exit_from_keypress)
         .add_system(systems::toggle_wireframe)
         .run();
@@ -64,13 +71,13 @@ fn setup_camera(mut commands: Commands) {
 /// set up a simple 3D scene
 fn setup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let terrain_mesh: Handle<Mesh> = asset_server.load("linear_gradient.hm.png");
+    let terrain_mesh = meshes.add(Mesh::from(shape::Quad::default()));
     commands
         .spawn_bundle(PbrBundle {
-            mesh: terrain_mesh.clone(),
+            mesh: terrain_mesh.clone_weak(),
             material: materials.add(StandardMaterial {
                 base_color: Color::rgb(0.8, 0.8, 0.8),
                 metallic: 0.25,
@@ -101,4 +108,31 @@ fn setup(
         },
         ..Default::default()
     });
+}
+
+fn load_new_terrain(mut terrain: Query<(&mut Handle<Mesh>, &mut TerrainMarker)>, mut to_load: ResMut<LoadTerrainMapPath>, asset_server: Res<AssetServer>) {
+    if to_load.0.is_none() {
+        return;
+    }
+
+    // we can unwrap here, as we know that to_load.0 is Some(..)
+    let path = to_load.0.take().unwrap();
+    println!("loading new map from {:?}", path.as_os_str());
+    let terrain_mesh: Handle<Mesh> = asset_server.load(path);
+
+    let (mut current_mesh, mut marker) = terrain.single_mut();
+
+    *current_mesh = terrain_mesh.clone_weak();
+    marker.0 = terrain_mesh;
+}
+
+fn file_drag_and_drop_system(mut events: EventReader<FileDragAndDrop>, mut to_load: ResMut<LoadTerrainMapPath>) {
+    for event in events.iter() {
+        if let FileDragAndDrop::DroppedFile { id: _, path_buf } = event {
+            dbg!(&path_buf);
+            to_load.0 = Some(path_buf.clone());
+            // we only want one update and do not care about additional files dropped
+            return;
+        }
+    }
 }

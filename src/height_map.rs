@@ -55,12 +55,17 @@ impl HeightSource for ImageHeightSource {
         match self.format {
             TextureFormat::Rgba8UnormSrgb => {
                 let offset = (x + (y * self.height)) * 4;
-                let srgb = palette::Srgb::from_components((
+                self.image.data[offset] as f32 / 255.0
+                //TODO: from my understanding the code below should move non-linear sRGB colours
+                //      to something linear. My hope was that this reduces the unrealistic high
+                //      differences we see in some maps. But it makes it even worse.
+                //      Guess I need to understand how colours work?
+                /*let srgb = palette::Srgb::from_components((
                     self.image.data[offset] as f64 / 255.0,
                     self.image.data[offset + 1] as f64 / 255.0,
                     self.image.data[offset + 2] as f64 / 255.0,
                 ));
-                srgb.into_linear().into_components().0 as f32
+                srgb.into_linear().into_components().0 as f32*/
             }
             TextureFormat::Rgba8Uint => {
                 let offset = (x + (y * self.height)) * 4;
@@ -78,8 +83,8 @@ impl HeightSource for ImageHeightSource {
 }
 
 pub struct HeightMap<H>
-where
-    H: HeightSource,
+    where
+        H: HeightSource,
 {
     height_source: H,
     source_size: usize,
