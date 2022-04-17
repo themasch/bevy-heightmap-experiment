@@ -1,9 +1,14 @@
 use crate::height_map;
-use bevy::asset::{AssetLoader, BoxedFuture, LoadContext, LoadedAsset};
-use bevy::prelude::Image;
-use bevy::render::texture::ImageType;
+use bevy::{
+    asset::{AssetLoader, BoxedFuture, LoadContext, LoadedAsset},
+    prelude::{FromWorld, Image, World},
+    render::renderer::RenderDevice,
+    render::texture::{CompressedImageFormats, ImageType},
+};
 
-pub struct HeightmapMeshLoader;
+pub struct HeightmapMeshLoader {
+    supported_compressed_formats: CompressedImageFormats,
+}
 
 impl AssetLoader for HeightmapMeshLoader {
     fn load<'a>(
@@ -16,7 +21,16 @@ impl AssetLoader for HeightmapMeshLoader {
             // use the file extension for the image type
             let ext = load_context.path().extension().unwrap().to_str().unwrap();
 
-            let dyn_img = Image::from_buffer(bytes, ImageType::Extension(ext)).unwrap();
+            let dyn_img = Image::from_buffer(
+                bytes,
+                ImageType::Extension(ext),
+                self.supported_compressed_formats,
+                // not sure about this one as of yet. can we know?
+                // guess we could let use `image` to parse the image and find out, but then we
+                // might not want to use `from_buffer` at all, because that does that, too?
+                true,
+            )
+            .unwrap();
             let mesh = height_map::mesh_from_image(dyn_img);
             load_context.set_default_asset(LoadedAsset::new(mesh));
             Ok(())
@@ -25,5 +39,18 @@ impl AssetLoader for HeightmapMeshLoader {
 
     fn extensions(&self) -> &[&str] {
         &["hm.png", "hm.jpg"]
+    }
+}
+
+impl FromWorld for HeightmapMeshLoader {
+    fn from_world(world: &mut World) -> Self {
+        let supported_compressed_formats = match world.get_resource::<RenderDevice>() {
+            Some(render_device) => CompressedImageFormats::from_features(render_device.features()),
+
+            None => CompressedImageFormats::all(),
+        };
+        Self {
+            supported_compressed_formats,
+        }
     }
 }

@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.52"
-bevy = { version = "0.6", features = ["jpeg"] }
+bevy = { version = "0.7", features = ["jpeg"] }
 palette = "0.6.0"
 rand = "0.8.4"
-smooth-bevy-cameras = "0.2.0"
+smooth-bevy-cameras = "0.3.0"

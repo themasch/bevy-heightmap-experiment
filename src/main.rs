@@ -1,32 +1,39 @@
+use bevy::asset::AssetServerSettings;
+use bevy::diagnostic::EntityCountDiagnosticsPlugin;
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     pbr::wireframe::WireframePlugin,
     prelude::*,
-    render::{options::WgpuOptions, render_resource::WgpuFeatures},
+    render::{render_resource::WgpuFeatures, settings::WgpuSettings},
 };
-use bevy::asset::AssetServerSettings;
-use bevy::diagnostic::EntityCountDiagnosticsPlugin;
 use smooth_bevy_cameras::{
     controllers::orbit::{OrbitCameraBundle, OrbitCameraController, OrbitCameraPlugin},
     LookTransformPlugin,
 };
 
-use venture::height_map::loader::HeightmapMeshLoader;
 use systems::{TerrainMarker, ToggleWireframe};
 use venture::debug_ui::DebugUiPlugin;
+use venture::height_map::loader::HeightmapMeshLoader;
 
 mod systems;
 
 fn main() {
-    let assets = std::env::current_dir().unwrap().join("assets").into_os_string().into_string().unwrap();
+    let assets = std::env::current_dir()
+        .unwrap()
+        .join("assets")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+
     App::new()
         .insert_resource(Msaa { samples: 4 })
-        .insert_resource(WgpuOptions {
+        .insert_resource(WgpuSettings {
             features: WgpuFeatures::POLYGON_MODE_LINE,
-            ..Default::default()
-        }) // Adds frame time diagnostics
+            ..default()
+        })
         .insert_resource(AssetServerSettings {
-            asset_folder: assets
+            asset_folder: assets,
+            watch_for_changes: false,
         })
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(EntityCountDiagnosticsPlugin::default())
@@ -37,7 +44,7 @@ fn main() {
         .add_plugin(OrbitCameraPlugin::default())
         .add_plugin(WireframePlugin)
         .add_plugin(DebugUiPlugin)
-        .add_asset_loader(HeightmapMeshLoader)
+        .init_asset_loader::<HeightmapMeshLoader>()
         .add_startup_system(setup)
         .add_startup_system(setup_camera)
         .add_system(systems::exit_from_keypress)
@@ -61,9 +68,6 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let terrain_mesh: Handle<Mesh> = asset_server.load("linear_gradient.hm.png");
-    //let terrain_mesh: Handle<Mesh> = asset_server.load("Heightmap5_DISP.hm.png");
-    //let terrain_mesh: Handle<Mesh> = asset_server.load("Sc2wB.hm.jpg");
-    // let terrain_mesh: Handle<Mesh> = asset_server.load("dereth-2015-07-27-height.hm.png");
     commands
         .spawn_bundle(PbrBundle {
             mesh: terrain_mesh.clone(),

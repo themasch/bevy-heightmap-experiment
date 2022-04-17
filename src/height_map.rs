@@ -78,8 +78,8 @@ impl HeightSource for ImageHeightSource {
 }
 
 pub struct HeightMap<H>
-    where
-        H: HeightSource,
+where
+    H: HeightSource,
 {
     height_source: H,
     source_size: usize,
@@ -182,13 +182,12 @@ fn create_mesh<T: HeightSource>(hm: HeightMap<T>) -> Mesh {
         }
     }
 
-
     println!("terrain generation took {:?}", start.elapsed());
     let rtin = RtinMeshBuilder::from_height_map(hm);
     let max_error = 0.002; // TODO: this is a configurable we want to tweak later
     let indices = rtin.get_indices(max_error);
     //TODO refactor this code se we can have a "trivial but slow" implementation, and an RTIN
-    // bases "fast" one.
+    // based "fast" one.
     /*let res_plus1 = resolution + 0;
     for px in 0..(resolution - 1) {
         for py in 0..(resolution - 1) {
@@ -197,7 +196,6 @@ fn create_mesh<T: HeightSource>(hm: HeightMap<T>) -> Mesh {
             }
         }
     }*/
-
 
     println!("terrain generation took {:?}", start.elapsed());
     let indices = Indices::U32(indices);
@@ -212,9 +210,9 @@ fn create_mesh<T: HeightSource>(hm: HeightMap<T>) -> Mesh {
 
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
     mesh.set_indices(Some(indices));
-    mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
 
     println!("{} vertices in total", mesh.count_vertices());
 
@@ -226,11 +224,7 @@ pub fn mesh_from_image(height_map: Image) -> Mesh {
     let height = height_map.texture_descriptor.size.height;
     let height_source = ImageHeightSource::from_grayscale(height_map);
 
-    let hm = HeightMap::create(
-        height_source,
-        min(width as usize, height as usize),
-        100.0,
-    );
+    let hm = HeightMap::create(height_source, min(width as usize, height as usize), 10.0);
 
     create_mesh(hm)
 }

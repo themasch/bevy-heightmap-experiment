@@ -1,2 +1,2 @@
-pub mod height_map;
 pub mod debug_ui;
+pub mod height_map;

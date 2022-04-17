@@ -2,15 +2,13 @@
 /// this is mostly copied/transliterated from [a javascript example by Vladimir Agafonkin][0]
 ///
 /// I have read [the paper][1], but still do not quite understand whats going on. But it just works.
-/// And it works great! While the initial performance of is not as good as the "initial stupid"
-/// implementation of "just render all triangle lel", it reduces the number of drawn triangles
+/// And it works great! While it adds some time for setting up the mesh over the "initial stupid"
+/// implementation (aka "just render all triangle lel"), it reduces the number of drawn triangles
 /// by a lot, even without LOD based on the camera position
 ///
 /// [0]: https://observablehq.com/@mourner/martin-real-time-rtin-terrain-mesh
 /// [1]: https://www.cs.ubc.ca/~will/papers/rtin.pdf
-
 use crate::height_map::{HeightMap, HeightSource};
-
 
 #[derive(Debug, Clone, Copy)]
 struct UXY {
@@ -34,7 +32,6 @@ impl UXY {
         self.y * grid_size + self.x
     }
 }
-
 
 struct ErrorMap {
     data: Vec<f32>,
@@ -103,20 +100,18 @@ impl ErrorMap {
                 let right_child = UXY::middle_of(&b, &c);
                 let right_child_error = errors[right_child.as_offset(grid_size)];
                 f32::max(
-                    f32::max(
-                        errors[center.as_offset(grid_size)],
-                        center_error,
-                    ),
-                    f32::max(
-                        left_child_error, right_child_error,
-                    ),
+                    f32::max(errors[center.as_offset(grid_size)], center_error),
+                    f32::max(left_child_error, right_child_error),
                 )
             };
 
             errors[center.as_offset(grid_size)] = new_error;
         }
 
-        Self { data: errors, grid_size }
+        Self {
+            data: errors,
+            grid_size,
+        }
     }
 }
 
@@ -182,7 +177,8 @@ impl<'e> IndexBuilder<'e> {
     fn process_triangle(&mut self, a: UXY, b: UXY, c: UXY) {
         let m = UXY::middle_of(&a, &b);
         if (a.x as isize - c.x as isize).abs() + (a.y as isize - c.y as isize).abs() > 1
-            && self.error_map.get_error(&m) > self.max_error {
+            && self.error_map.get_error(&m) > self.max_error
+        {
             self.process_triangle(c, a, m);
             self.process_triangle(b, c, m);
         } else {
@@ -201,8 +197,8 @@ impl<'e> IndexBuilder<'e> {
 
 #[cfg(test)]
 mod test {
-    use bevy::winit::winit_runner;
     use super::*;
+    use bevy::winit::winit_runner;
 
     struct TestHeightSource<const W: usize> {
         data: Vec<f32>,
@@ -217,19 +213,11 @@ mod test {
     #[test]
     fn test_error_map_is_build_correctly_small_dataset() {
         let source: TestHeightSource<3> = TestHeightSource {
-            data: vec![
-                0.0, 1.0, 1.0,
-                2.0, 0.0, 3.0,
-                0.0, 0.0, 0.0,
-            ]
+            data: vec![0.0, 1.0, 1.0, 2.0, 0.0, 3.0, 0.0, 0.0, 0.0],
         };
         let hm = HeightMap::create(source, 3, 1.0);
 
-        let expected_result = vec![
-            0.0, 0.5, 0.0,
-            2.0, 2.5, 2.5,
-            0.0, 0.0, 0.0,
-        ];
+        let expected_result = vec![0.0, 0.5, 0.0, 2.0, 2.5, 2.5, 0.0, 0.0, 0.0];
 
         let error_map = ErrorMap::from_height_map(&hm);
 
@@ -239,22 +227,12 @@ mod test {
     #[test]
     fn test_indices_are_build_correctly_small_dataset() {
         let source: TestHeightSource<3> = TestHeightSource {
-            data: vec![
-                0.0, 1.0, 1.0,
-                2.0, 0.0, 3.0,
-                0.0, 0.0, 0.0,
-            ]
+            data: vec![0.0, 1.0, 1.0, 2.0, 0.0, 3.0, 0.0, 0.0, 0.0],
         };
         let hm = HeightMap::create(source, 3, 1.0);
 
         let expected_result = vec![
-            4, 2, 1,
-            0, 4, 1,
-            4, 8, 5,
-            2, 4, 5,
-            6, 8, 4,
-            4, 0, 3,
-            6, 4, 3,
+            4, 2, 1, 0, 4, 1, 4, 8, 5, 2, 4, 5, 6, 8, 4, 4, 0, 3, 6, 4, 3,
         ];
 
         let rtin = RtinMeshBuilder::from_height_map(hm);
